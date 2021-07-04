@@ -51,10 +51,15 @@ public:
 
     virtual ~ControlLoop();
 
+protected:
+    virtual core::ITimer& timer();
+
 private:
     virtual TaskResult process_task_imp(TaskQueue::Task&);
 
     TaskResult task_process_pipeline_tasks_(Task&);
+
+    core::Timer wakeup_timer_;
 };
 
 } // namespace ctl

@@ -13,6 +13,7 @@
 #define ROC_CORE_TIMER_H_
 
 #include "roc_core/atomic.h"
+#include "roc_core/itimer.h"
 #include "roc_core/noncopyable.h"
 #include "roc_core/semaphore.h"
 #include "roc_core/seqlock.h"
@@ -22,7 +23,7 @@ namespace roc {
 namespace core {
 
 //! Thread-safe timer.
-class Timer : public NonCopyable<> {
+class Timer : public NonCopyable<>, public ITimer {
 public:
     Timer();
 
@@ -40,6 +41,8 @@ public:
     //! Assumes that wait_deadline() calls are serialized.
     //! Deadline may be changed concurrently from other threads.
     void wait_deadline();
+
+    nanoseconds_t get_time();
 
 private:
     Semaphore sem_;

@@ -13,6 +13,7 @@
 #define ROC_CTL_TASK_QUEUE_H_
 
 #include "roc_core/atomic.h"
+#include "roc_core/itimer.h"
 #include "roc_core/list.h"
 #include "roc_core/list_node.h"
 #include "roc_core/mpsc_queue.h"
@@ -239,6 +240,8 @@ protected:
     //! stop() should be called before calling destructor.
     void stop_and_wait();
 
+    virtual core::ITimer& timer() = 0;
+
 private:
     // Task states.
     enum TaskState {
@@ -288,7 +291,7 @@ private:
     core::MpscQueue<Task, core::NoOwnership> ready_queue_;
     core::List<Task, core::NoOwnership> sleeping_queue_;
 
-    core::Timer wakeup_timer_;
+    // core::ITimer wakeup_timer_;
     core::Mutex task_mutex_;
 };
 

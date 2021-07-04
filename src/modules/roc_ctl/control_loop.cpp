@@ -40,5 +40,9 @@ TaskQueue::TaskResult ControlLoop::task_process_pipeline_tasks_(Task& basic_task
     return TaskSucceeded;
 }
 
+core::ITimer& ControlLoop::timer() {
+    return wakeup_timer_;
+}
+
 } // namespace ctl
 } // namespace roc
