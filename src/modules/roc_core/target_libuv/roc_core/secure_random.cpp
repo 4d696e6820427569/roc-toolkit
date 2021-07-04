@@ -47,7 +47,7 @@ bool secure_random(uint32_t from, uint32_t to, uint32_t& result) {
 
     return true;
 }
-#else  // UV_VERSION_MAJOR < 1 || (UV_VERSION_MAJOR == 1 && UV_VERSION_MINOR < 33)
+#else // UV_VERSION_MAJOR < 1 || (UV_VERSION_MAJOR == 1 && UV_VERSION_MINOR < 33)
 bool secure_random(uint32_t from, uint32_t to, uint32_t& result) {
     result = fast_random(from, to);
     return true;

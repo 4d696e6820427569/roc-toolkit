@@ -21,7 +21,7 @@ bool format_tid(char* buf, size_t bufsz) {
     int ret = snprintf(buf, bufsz, "%llu", (unsigned long long)tid);
     return ret > 0 && (size_t)ret < bufsz;
 }
-#else  // !defined(SYS_gettid)
+#else // !defined(SYS_gettid)
 bool format_tid(char* buf, size_t bufsz) {
     pid_t tid = getpid();
     int ret = snprintf(buf, bufsz, "%llu", (unsigned long long)tid);
