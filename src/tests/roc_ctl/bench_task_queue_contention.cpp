@@ -38,7 +38,6 @@ public:
 
     using TaskQueue::stop_and_wait;
 
-protected:
     core::ITimer& timer() {
         return wakeup_timer_;
     }
