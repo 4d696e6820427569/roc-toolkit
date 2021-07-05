@@ -52,6 +52,8 @@ public:
     virtual ~ControlLoop();
 
 protected:
+
+    //! Return a reference of Timer.
     virtual core::ITimer& timer();
 
 private:

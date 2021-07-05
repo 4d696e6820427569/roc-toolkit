@@ -42,6 +42,7 @@ public:
     //! Deadline may be changed concurrently from other threads.
     void wait_deadline();
 
+    //! Get the current time on system.
     nanoseconds_t get_time();
 
 private:

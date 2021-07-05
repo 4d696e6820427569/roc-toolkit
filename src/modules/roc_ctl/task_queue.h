@@ -240,6 +240,7 @@ protected:
     //! stop() should be called before calling destructor.
     void stop_and_wait();
 
+    //! Return a reference to a derived instance of ITimer.
     virtual core::ITimer& timer() = 0;
 
 private:

@@ -7,7 +7,7 @@
  */
 
 //! @file roc_core/itimer.h
-//! @brief TODO.
+//! @brief An interface for timers.
 
 #ifndef ROC_CORE_ITIMER_H_
 #define ROC_CORE_ITIMER_H_
@@ -22,10 +22,13 @@ class ITimer {
 public:
     virtual ~ITimer();
 
+    //! Set timer deadline.
     virtual bool try_set_deadline(nanoseconds_t deadline) = 0;
 
+    //! Wait until deadline expires.
     virtual void wait_deadline() = 0;
 
+    //! Get the current time.
     virtual nanoseconds_t get_time() = 0;
 };
 } // namespace core
