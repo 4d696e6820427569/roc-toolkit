@@ -27,6 +27,8 @@ class Timer : public NonCopyable<>, public ITimer {
 public:
     Timer();
 
+    ~Timer();
+
     //! Set timer deadline.
     //! Can be called concurrently, but only one concurrent call will succeed.
     //! Returns false if the call failed because of another concurrent call.

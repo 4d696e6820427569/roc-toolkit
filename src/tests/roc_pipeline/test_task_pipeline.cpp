@@ -440,7 +440,6 @@ TEST(task_pipeline, schedule_right_after_creation) {
 
     TestHandler handler(pipeline);
     TestPipeline::Task task;
-
     CHECK(!task.success());
 
     // schedule() should process task in-place
@@ -855,7 +854,6 @@ TEST(task_pipeline, schedule_when_processing_frame) {
     // AsyncFrameWriter will call process_frame_and_tasks() from background thread
     AsyncFrameWriter fw(pipeline, frame);
     fw.start();
-
     // wait until background process_frame_and_tasks() is blocked
     pipeline.wait_blocked();
 

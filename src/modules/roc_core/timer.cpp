@@ -19,6 +19,9 @@ Timer::Timer()
     , next_wakeup_(0) {
 }
 
+Timer::~Timer() {
+}
+
 bool Timer::try_set_deadline(nanoseconds_t new_deadline) {
     if (!deadline_.try_store(new_deadline)) {
         return false;

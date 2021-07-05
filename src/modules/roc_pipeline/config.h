@@ -73,7 +73,7 @@ struct TaskConfig {
     //! Set to zero to disable frame splitting.
     core::nanoseconds_t max_frame_length_between_tasks;
 
-    //! Mximum task processing duration happening immediatelly after processing a frame.
+    //! Maximum task processing duration happening immediatelly after processing a frame.
     //! If this period expires and there are still pending tasks, asynchronous
     //! task processing is scheduled.
     //! At least one task is always processed after each frame, even if this

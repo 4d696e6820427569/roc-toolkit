@@ -135,6 +135,7 @@ public:
     }
 
     core::ITimer& timer() {
+        core::Mutex::Lock lock(mutex_);
         return mock_timer_;
     }
 
@@ -194,6 +195,13 @@ public:
     void set_timer(core::ITimer& mock_timer) {
         core::Mutex::Lock lock(mutex_);
         mock_timer_ = (MockTimer*)&mock_timer;
+    }
+
+    void set_time(core::nanoseconds_t t) {
+        core::Mutex::Lock lock(mutex_);
+        if (mock_timer_) {
+            mock_timer_->set_time(t);
+        }
     }
 
     void expect_success(bool success) {
@@ -1445,7 +1453,7 @@ TEST(task_queue, no_starvation) {
 
     // wait for sleeping task to sync
     core::sleep_for(WaitTime * (NumTasks / 2));
-    ((MockTimer&)tq.timer()).set_time(WaitTime * (NumTasks / 2));
+    handler.set_time(WaitTime * (NumTasks / 2));
 
     // check that the tasks are fetched from alternating queues
     tq.unblock_one();

@@ -617,5 +617,9 @@ core::nanoseconds_t TaskQueue::update_wakeup_timer_() {
     return deadline;
 }
 
+core::ITimer& TaskQueue::timer() {
+    return wakeup_timer_;
+}
+
 } // namespace ctl
 } // namespace roc
