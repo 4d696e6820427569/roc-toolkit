@@ -241,7 +241,7 @@ protected:
     void stop_and_wait();
 
     //! Return a reference to a derived instance of ITimer.
-    virtual core::ITimer& timer();
+    virtual core::ITimer& timer() = 0;
 
 private:
     // Task states.
@@ -292,7 +292,6 @@ private:
     core::MpscQueue<Task, core::NoOwnership> ready_queue_;
     core::List<Task, core::NoOwnership> sleeping_queue_;
 
-    core::Timer wakeup_timer_;
     core::Mutex task_mutex_;
 };
 

@@ -139,6 +139,21 @@ public:
         return mock_timer_;
     }
 
+    void set_time(core::nanoseconds_t t) {
+        core::Mutex::Lock lock(mutex_);
+        mock_timer_.set_time(t);
+    }
+
+    core::nanoseconds_t get_time() {
+        core::Mutex::Lock lock(mutex_);
+        return mock_timer_.get_time();
+    }
+
+    void add_time(core::nanoseconds_t t) {
+        core::Mutex::Lock lock(mutex_);
+        mock_timer_.add_time(t);
+    }
+
 private:
     enum { MaxTasks = 100 };
 
@@ -171,9 +186,21 @@ private:
 
 class TestHandler : public TaskQueue::ICompletionHandler {
 public:
+    TestHandler(TestTaskQueue* test_task_queue)
+        : cond_(mutex_)
+        , task_(NULL)
+        , test_task_queue_(test_task_queue)
+        , expect_success_(false)
+        , expect_cancelled_(false)
+        , expect_after_(0)
+        , expect_n_calls_(0)
+        , actual_calls_(0) {
+    }
+
     TestHandler()
         : cond_(mutex_)
         , task_(NULL)
+        , test_task_queue_(NULL)
         , expect_success_(false)
         , expect_cancelled_(false)
         , expect_after_(0)
@@ -192,16 +219,9 @@ public:
         }
     }
 
-    void set_timer(core::ITimer& mock_timer) {
+    void set_task_queue(TestTaskQueue* task_queue) {
         core::Mutex::Lock lock(mutex_);
-        mock_timer_ = (MockTimer*)&mock_timer;
-    }
-
-    void set_time(core::nanoseconds_t t) {
-        core::Mutex::Lock lock(mutex_);
-        if (mock_timer_) {
-            mock_timer_->set_time(t);
-        }
+        test_task_queue_ = task_queue;
     }
 
     void expect_success(bool success) {
@@ -216,8 +236,7 @@ public:
 
     void expect_after(core::nanoseconds_t delay) {
         core::Mutex::Lock lock(mutex_);
-        // expect_after_ = core::timestamp() + delay;
-        expect_after_ = mock_timer_->get_time() + delay;
+        expect_after_ = test_task_queue_->get_time() + delay;
     }
 
     void expect_n_calls(size_t n) {
@@ -257,7 +276,7 @@ public:
         }
         */
 
-        if (mock_timer_->get_time() < expect_after_) {
+        if (test_task_queue_->get_time() < expect_after_) {
             roc_panic("handler: task was executed too early");
         }
 
@@ -270,7 +289,7 @@ private:
     core::Cond cond_;
 
     TaskQueue::Task* task_;
-    MockTimer* mock_timer_;
+    TestTaskQueue* test_task_queue_;
 
     bool expect_success_;
     bool expect_cancelled_;
@@ -301,8 +320,7 @@ TEST(task_queue, schedule_one) {
 
         UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-        TestHandler handler;
-        handler.set_timer(tq.timer());
+        TestHandler handler(&tq);
 
         handler.expect_success(true);
         handler.expect_cancelled(false);
@@ -326,8 +344,7 @@ TEST(task_queue, schedule_one) {
 
         UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-        TestHandler handler;
-        handler.set_timer(tq.timer());
+        TestHandler handler(&tq);
 
         handler.expect_success(false);
         handler.expect_cancelled(false);
@@ -363,7 +380,7 @@ TEST(task_queue, schedule_one_no_handler) {
 
     while (task.pending()) {
         core::sleep_for(core::Microsecond * 100);
-        ((MockTimer&)tq.timer()).add_time(core::Microsecond * 100);
+        tq.add_time(core::Microsecond * 100);
     }
 
     UNSIGNED_LONGS_EQUAL(1, tq.num_tasks());
@@ -384,8 +401,7 @@ TEST(task_queue, schedule_many_sequantial) {
 
         const bool success = (n % 3 != 0);
 
-        TestHandler handler;
-        handler.set_timer(tq.timer());
+        TestHandler handler(&tq);
 
         handler.expect_success(success);
         handler.expect_cancelled(false);
@@ -413,10 +429,8 @@ TEST(task_queue, schedule_many_batched) {
 
     TestTaskQueue::Task tasks[NumTasks];
     TestHandler handlers[NumTasks];
-
-    for (size_t n = 0; n < NumTasks; n++) {
-        handlers[n].set_timer(tq.timer());
-    }
+    for (size_t n = 0; n < NumTasks; n++)
+        handlers[n].set_task_queue(&tq);
 
     handlers[0].expect_success(false);
     handlers[0].expect_cancelled(false);
@@ -525,8 +539,7 @@ TEST(task_queue, schedule_at_one) {
 
         UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-        TestHandler handler;
-        handler.set_timer(tq.timer());
+        TestHandler handler(&tq);
 
         handler.expect_success(true);
         handler.expect_cancelled(false);
@@ -551,8 +564,7 @@ TEST(task_queue, schedule_at_one) {
 
         UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-        TestHandler handler;
-        handler.set_timer(tq.timer());
+        TestHandler handler(&tq);
 
         handler.expect_success(false);
         handler.expect_cancelled(false);
@@ -589,7 +601,7 @@ TEST(task_queue, schedule_at_one_no_handler) {
 
     while (task.pending()) {
         core::sleep_for(core::Microsecond * 100);
-        ((MockTimer&)tq.timer()).add_time(core::Microsecond * 100);
+        tq.add_time(core::Microsecond * 100);
     }
 
     UNSIGNED_LONGS_EQUAL(1, tq.num_tasks());
@@ -607,10 +619,8 @@ TEST(task_queue, schedule_at_many) {
 
     TestTaskQueue::Task tasks[NumTasks];
     TestHandler handlers[NumTasks];
-
-    for (size_t n = 0; n < NumTasks; n++) {
-        handlers[n].set_timer(tq.timer());
-    }
+    for (size_t n = 0; n < NumTasks; n++)
+        handlers[n].set_task_queue(&tq);
 
     handlers[0].expect_success(false);
     handlers[0].expect_cancelled(false);
@@ -625,7 +635,7 @@ TEST(task_queue, schedule_at_many) {
 
     for (size_t n = 1; n < NumTasks; n++) {
         core::sleep_for(core::Microsecond);
-        ((MockTimer&)tq.timer()).add_time(core::Microsecond);
+        tq.add_time(core::Microsecond);
 
         const bool success = (n % 3 != 0);
 
@@ -666,10 +676,8 @@ TEST(task_queue, schedule_at_reversed) {
 
     TestTaskQueue::Task tasks[NumTasks];
     TestHandler handlers[NumTasks];
-
-    for (size_t n = 0; n < NumTasks; n++) {
-        handlers[n].set_timer(tq.timer());
-    }
+    for (size_t n = 0; n < NumTasks; n++)
+        handlers[n].set_task_queue(&tq);
 
     handlers[0].expect_success(false);
     handlers[0].expect_cancelled(false);
@@ -683,7 +691,7 @@ TEST(task_queue, schedule_at_reversed) {
     tq.wait_blocked();
 
     // const core::nanoseconds_t now = core::timestamp();
-    const core::nanoseconds_t now = tq.timer().get_time();
+    const core::nanoseconds_t now = tq.get_time();
 
     for (size_t n = 1; n < NumTasks; n++) {
         const bool success = (n % 3 != 0);
@@ -729,8 +737,7 @@ TEST(task_queue, schedule_at_shuffled) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     handler.expect_success(true);
     handler.expect_n_calls(4);
@@ -745,7 +752,7 @@ TEST(task_queue, schedule_at_shuffled) {
     tq.block();
 
     // const core::nanoseconds_t now = core::timestamp();
-    const core::nanoseconds_t now = tq.timer().get_time();
+    const core::nanoseconds_t now = tq.get_time();
 
     tq.schedule_at(tasks[0], now + core::Millisecond, &handler);
     tq.schedule_at(tasks[1], now + core::Millisecond * 4, &handler);
@@ -782,8 +789,7 @@ TEST(task_queue, schedule_at_same_deadline) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     handler.expect_success(true);
     handler.expect_n_calls(4);
@@ -798,7 +804,7 @@ TEST(task_queue, schedule_at_same_deadline) {
     tq.block();
 
     // const core::nanoseconds_t now = core::timestamp();
-    const core::nanoseconds_t now = tq.timer().get_time();
+    const core::nanoseconds_t now = tq.get_time();
 
     tq.schedule_at(tasks[0], now + core::Millisecond, &handler);
     tq.schedule_at(tasks[1], now + core::Millisecond * 4, &handler);
@@ -835,8 +841,7 @@ TEST(task_queue, schedule_at_and_schedule) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     handler.expect_success(true);
     handler.expect_n_calls(4);
@@ -851,7 +856,7 @@ TEST(task_queue, schedule_at_and_schedule) {
     tq.block();
 
     // const core::nanoseconds_t now = core::timestamp();
-    const core::nanoseconds_t now = tq.timer().get_time();
+    const core::nanoseconds_t now = tq.get_time();
 
     tq.schedule(tasks[0], &handler);
     tq.schedule_at(tasks[1], now + core::Millisecond * 7, &handler);
@@ -889,10 +894,8 @@ TEST(task_queue, schedule_and_async_cancel) {
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
     TestHandler handlers[4];
-    handlers[0].set_timer(tq.timer());
-    handlers[1].set_timer(tq.timer());
-    handlers[2].set_timer(tq.timer());
-    handlers[3].set_timer(tq.timer());
+    for (size_t n = 0; n < 4; n++)
+        handlers[n].set_task_queue(&tq);
 
     TestTaskQueue::Task tasks[4];
 
@@ -962,10 +965,8 @@ TEST(task_queue, schedule_at_and_async_cancel) {
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
     TestHandler handlers[4];
-    handlers[0].set_timer(tq.timer());
-    handlers[1].set_timer(tq.timer());
-    handlers[2].set_timer(tq.timer());
-    handlers[3].set_timer(tq.timer());
+    for (size_t n = 0; n < 4; n++)
+        handlers[n].set_task_queue(&tq);
 
     TestTaskQueue::Task tasks[4];
 
@@ -993,7 +994,7 @@ TEST(task_queue, schedule_at_and_async_cancel) {
     tq.block();
 
     // const core::nanoseconds_t now = core::timestamp();
-    const core::nanoseconds_t now = tq.timer().get_time();
+    const core::nanoseconds_t now = tq.get_time();
 
     tq.schedule_at(tasks[0], now + core::Millisecond, &handlers[0]);
     tq.schedule_at(tasks[1], now + core::Millisecond * 4, &handlers[1]);
@@ -1037,8 +1038,7 @@ TEST(task_queue, cancel_and_wait) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     handler.expect_success(false);
     handler.expect_cancelled(true);
@@ -1065,8 +1065,7 @@ TEST(task_queue, cancel_already_finished) {
 
     tq.set_nth_result(0, true);
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     handler.expect_success(true);
     handler.expect_cancelled(false);
@@ -1093,8 +1092,7 @@ TEST(task_queue, schedule_already_finished) {
     tq.set_nth_result(0, true);
     tq.set_nth_result(1, true);
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     handler.expect_success(true);
     handler.expect_cancelled(false);
@@ -1123,10 +1121,8 @@ TEST(task_queue, schedule_at_cancel) {
     tq.set_nth_result(0, true);
     tq.set_nth_result(1, true);
 
-    TestHandler handler1;
-    handler1.set_timer(tq.timer());
-    TestHandler handler2;
-    handler2.set_timer(tq.timer());
+    TestHandler handler1(&tq);
+    TestHandler handler2(&tq);
 
     TestTaskQueue::Task task1;
     TestTaskQueue::Task task2;
@@ -1183,6 +1179,7 @@ TEST(task_queue, reschedule_new) {
 
     while (task.pending()) {
         core::sleep_for(core::Microsecond * 100);
+        tq.add_time(core::Microsecond * 100);
     }
 
     UNSIGNED_LONGS_EQUAL(1, tq.num_tasks());
@@ -1198,8 +1195,7 @@ TEST(task_queue, reschedule_pending) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     TestTaskQueue::Task task1;
     TestTaskQueue::Task task2;
@@ -1258,8 +1254,7 @@ TEST(task_queue, reschedule_processing) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     TestTaskQueue::Task task;
 
@@ -1304,8 +1299,7 @@ TEST(task_queue, reschedule_succeeded) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     TestTaskQueue::Task task;
 
@@ -1343,8 +1337,7 @@ TEST(task_queue, reschedule_failed) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     TestTaskQueue::Task task;
 
@@ -1382,8 +1375,7 @@ TEST(task_queue, reschedule_cancelled) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
 
     TestTaskQueue::Task task;
 
@@ -1427,8 +1419,7 @@ TEST(task_queue, no_starvation) {
 
     UNSIGNED_LONGS_EQUAL(0, tq.num_tasks());
 
-    TestHandler handler;
-    handler.set_timer(tq.timer());
+    TestHandler handler(&tq);
     handler.expect_success(true);
     handler.expect_n_calls(NumTasks);
 
@@ -1437,7 +1428,7 @@ TEST(task_queue, no_starvation) {
     tq.block();
 
     // const core::nanoseconds_t now = core::timestamp();
-    const core::nanoseconds_t now = tq.timer().get_time();
+    const core::nanoseconds_t now = tq.get_time();
     const core::nanoseconds_t WaitTime = core::Millisecond;
 
     tq.schedule_at(tasks[0], now + WaitTime, &handler);
@@ -1453,7 +1444,7 @@ TEST(task_queue, no_starvation) {
 
     // wait for sleeping task to sync
     core::sleep_for(WaitTime * (NumTasks / 2));
-    handler.set_time(WaitTime * (NumTasks / 2));
+    tq.add_time(WaitTime * (NumTasks / 2));
 
     // check that the tasks are fetched from alternating queues
     tq.unblock_one();
