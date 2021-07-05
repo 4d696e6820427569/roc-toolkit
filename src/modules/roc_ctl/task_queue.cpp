@@ -135,7 +135,8 @@ void TaskQueue::run() {
     roc_log(LogDebug, "task queue: starting event loop");
 
     for (;;) {
-        wakeup_timer_.wait_deadline();
+        // wakeup_timer_.wait_deadline();
+        timer().wait_deadline();
 
         if (!process_tasks_()) {
             break;
@@ -151,7 +152,8 @@ void TaskQueue::stop_and_wait() {
     }
 
     stop_ = true;
-    wakeup_timer_.try_set_deadline(0);
+    // wakeup_timer_.try_set_deadline(0);
+    timer().try_set_deadline(0);
 
     Thread::join();
 }
@@ -267,7 +269,8 @@ void TaskQueue::enqueue_renewed_task_(Task& task, core::nanoseconds_t deadline) 
     // Wake up event loop thread.
     // This wakeup will either succeed or handled by concurrent call to
     // update_wakeup_timer_().
-    wakeup_timer_.try_set_deadline(0);
+    // wakeup_timer_.try_set_deadline(0);
+    timer().try_set_deadline(0);
 }
 
 bool TaskQueue::try_renew_deadline_inplace_(Task& task, core::nanoseconds_t deadline) {
@@ -535,7 +538,17 @@ TaskQueue::Task* TaskQueue::fetch_sleeping_task_() {
         return NULL;
     }
 
+    /*
     if (task->deadline_ > core::timestamp()) {
+        return NULL;
+    }
+    */
+    /*
+    if (task->deadline_ > wakeup_timer_.get_time()) {
+        return NULL;
+    }
+    */
+    if (task->deadline_ > timer().get_time()) {
         return NULL;
     }
 
@@ -589,14 +602,16 @@ core::nanoseconds_t TaskQueue::update_wakeup_timer_() {
     roc_log(LogTrace, "task queue: updating wakeup deadline: deadline=%lld",
             (long long)deadline);
 
-    wakeup_timer_.try_set_deadline(deadline);
+    // wakeup_timer_.try_set_deadline(deadline);
+    timer().try_set_deadline(deadline);
 
     // We should check whether new tasks were added while we were updating the timer.
     // In this case, try_set_deadline(0) in renew_task_() was probably failed, and
     // we should call it by ourselves to wake up the event loop thread.
     if (deadline != 0 && ready_queue_size_ != 0) {
         deadline = 0;
-        wakeup_timer_.try_set_deadline(0);
+        // wakeup_timer_.try_set_deadline(0);
+        timer().try_set_deadline(0);
     }
 
     return deadline;

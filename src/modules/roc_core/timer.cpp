@@ -45,7 +45,7 @@ void Timer::wait_deadline() {
 
         const nanoseconds_t deadline = deadline_.wait_load();
 
-        if (deadline >= 0 && deadline <= timestamp()) {
+        if (deadline >= 0 && deadline <= get_time()) {
             break;
         }
 
@@ -60,6 +60,10 @@ void Timer::wait_deadline() {
     }
 
     next_wakeup_.exclusive_store(0);
+}
+
+nanoseconds_t Timer::get_time() {
+    return core::timestamp();
 }
 
 } // namespace core
