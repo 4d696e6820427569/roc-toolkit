@@ -38,10 +38,17 @@ public:
 
     using TaskQueue::stop_and_wait;
 
+protected:
+    core::ITimer& timer() {
+        return wakeup_timer_;
+    }
+
 private:
     virtual TaskResult process_task_imp(TaskQueue::Task&) {
         return TaskSucceeded;
     }
+
+    core::Timer wakeup_timer_;
 };
 
 class NoopHandler : public TaskQueue::ICompletionHandler {
