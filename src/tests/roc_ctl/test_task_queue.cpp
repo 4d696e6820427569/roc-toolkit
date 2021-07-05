@@ -29,8 +29,8 @@ class MockTimer : public core::ITimer {
 public:
     MockTimer()
         : time_(0)
-        , deadline_(0)
-    {}
+        , deadline_(0) {
+    }
 
     ~MockTimer() {
     }
@@ -355,7 +355,7 @@ TEST(task_queue, schedule_one_no_handler) {
 
     while (task.pending()) {
         core::sleep_for(core::Microsecond * 100);
-        ((MockTimer&) tq.timer()).add_time(core::Microsecond * 100);
+        ((MockTimer&)tq.timer()).add_time(core::Microsecond * 100);
     }
 
     UNSIGNED_LONGS_EQUAL(1, tq.num_tasks());
@@ -581,7 +581,7 @@ TEST(task_queue, schedule_at_one_no_handler) {
 
     while (task.pending()) {
         core::sleep_for(core::Microsecond * 100);
-        ((MockTimer&) tq.timer()).add_time(core::Microsecond * 100);
+        ((MockTimer&)tq.timer()).add_time(core::Microsecond * 100);
     }
 
     UNSIGNED_LONGS_EQUAL(1, tq.num_tasks());
@@ -617,7 +617,7 @@ TEST(task_queue, schedule_at_many) {
 
     for (size_t n = 1; n < NumTasks; n++) {
         core::sleep_for(core::Microsecond);
-        ((MockTimer&) tq.timer()).add_time(core::Microsecond);
+        ((MockTimer&)tq.timer()).add_time(core::Microsecond);
 
         const bool success = (n % 3 != 0);
 
@@ -1445,7 +1445,7 @@ TEST(task_queue, no_starvation) {
 
     // wait for sleeping task to sync
     core::sleep_for(WaitTime * (NumTasks / 2));
-    ((MockTimer&) tq.timer()).set_time(WaitTime * (NumTasks / 2));
+    ((MockTimer&)tq.timer()).set_time(WaitTime * (NumTasks / 2));
 
     // check that the tasks are fetched from alternating queues
     tq.unblock_one();
